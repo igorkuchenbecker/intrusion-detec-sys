@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Runtime artefacts. Anchored to the repository root so nothing packaged is
+# matched by accident.
+/ids.db
+/ids.db-wal
+/ids.db-shm
+/*.db
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

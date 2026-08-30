@@ -1,0 +1,60 @@
+# Example configuration for the IDS.
+#
+# Every key is optional; anything omitted keeps the built-in default. Sections
+# exist only for readability -- they are flattened on load.
+#
+#   python -m ids start --config examples/config.toml
+
+[capture]
+# Interface to capture on. Omit for Scapy's default.
+# interface = "eth0"
+# BPF filter applied in the kernel, before packets reach the process.
+# bpf_filter = "tcp or udp"
+queue_max_size = 10000
+
+[storage]
+database_path = "ids.db"
+retention_days = 7
+
+[port_scan]
+# A source touching this many distinct ports within the window is reported.
+port_scan_window = 10.0
+port_scan_threshold = 15
+port_scan_cooldown = 60.0
+
+[traffic]
+# A closed window whose packet count exceeds the baseline by this multiple is
+# reported. traffic_min_packets keeps an idle link from alerting on noise.
+traffic_window = 5.0
+traffic_baseline_windows = 12
+traffic_threshold_multiplier = 4.0
+traffic_min_packets = 50
+traffic_cooldown = 60.0
+
+[brute_force]
+brute_force_window = 60.0
+brute_force_threshold = 5
+brute_force_cooldown = 120.0
+
+[correlation]
+# A source triggering this many distinct detection types within the window is
+# reported once as correlated activity.
+correlation_window = 300.0
+correlation_min_types = 2
+
+[alerting]
+alert_dedup_window = 30.0
+
+[limits]
+# Hard ceiling on tracked sources per rule, so state cannot grow without bound.
+max_tracked_sources = 4096
+
+[api]
+# Binding to localhost is deliberate: there is no authentication.
+api_host = "127.0.0.1"
+api_port = 8080
+dashboard_enabled = true
+max_page_size = 500
+
+[logging]
+log_level = "INFO"

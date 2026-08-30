@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IDS — Console de Monitoramento</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <h1>Intrusion Detection System</h1>
+  <div class="status">
+    <span id="stream-state" class="pill pill-idle">conectando</span>
+    <span id="health-state" class="pill pill-idle">—</span>
+  </div>
+</header>
+
+<main>
+  <section class="cards" aria-label="Resumo de alertas">
+    <div class="card"><span class="n" id="stat-total">0</span><span class="l">Alertas</span></div>
+    <div class="card sev-critical"><span class="n" id="stat-critical">0</span><span class="l">Critical</span></div>
+    <div class="card sev-high"><span class="n" id="stat-high">0</span><span class="l">High</span></div>
+    <div class="card sev-medium"><span class="n" id="stat-medium">0</span><span class="l">Medium</span></div>
+    <div class="card sev-low"><span class="n" id="stat-low">0</span><span class="l">Low</span></div>
+    <div class="card sev-info"><span class="n" id="stat-info">0</span><span class="l">Info</span></div>
+  </section>
+
+  <section class="cards" aria-label="Métricas do pipeline">
+    <div class="card"><span class="n" id="m-captured">0</span><span class="l">Pacotes capturados</span></div>
+    <div class="card"><span class="n" id="m-parsed">0</span><span class="l">Pacotes processados</span></div>
+    <div class="card"><span class="n" id="m-dropped">0</span><span class="l">Pacotes descartados</span></div>
+    <div class="card"><span class="n" id="m-queue">0</span><span class="l">Fila</span></div>
+    <div class="card"><span class="n" id="m-pps">0</span><span class="l">Pacotes/s</span></div>
+    <div class="card"><span class="n" id="m-bps">0</span><span class="l">Bytes/s</span></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Alertas</h2>
+      <form id="filters" class="filters">
+        <label>Severidade
+          <select id="f-severity">
+            <option value="">todas</option>
+            <option value="critical">critical</option>
+            <option value="high">high</option>
+            <option value="medium">medium</option>
+            <option value="low">low</option>
+            <option value="info">info</option>
+          </select>
+        </label>
+        <label>Detecção
+          <select id="f-type">
+            <option value="">todas</option>
+            <option value="port_scan">port_scan</option>
+            <option value="traffic_volume_anomaly">traffic_volume_anomaly</option>
+            <option value="brute_force">brute_force</option>
+            <option value="correlated_activity">correlated_activity</option>
+          </select>
+        </label>
+        <label>IP de origem
+          <input id="f-source" type="text" placeholder="10.0.0.5" inputmode="numeric">
+        </label>
+        <button type="submit">Filtrar</button>
+        <button type="button" id="f-clear">Limpar</button>
+      </form>
+    </div>
+    <p id="filter-error" class="error" hidden></p>
+    <table class="alerts">
+      <thead>
+        <tr>
+          <th>Horário</th><th>Severidade</th><th>Confiança</th><th>Detecção</th>
+          <th>Origem</th><th>Destino</th><th>Descrição</th>
+        </tr>
+      </thead>
+      <tbody id="alerts-body"></tbody>
+    </table>
+    <p id="empty-state" class="empty">Nenhum alerta registrado.</p>
+  </section>
+</main>
+
+<footer>
+  Ferramenta defensiva de monitoramento. Sem autenticação: sirva apenas em localhost.
+</footer>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
