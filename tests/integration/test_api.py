@@ -159,3 +159,67 @@ def test_stream_emits_alerts_then_ends_at_shutdown(client) -> None:
     payload = b"".join(frames).decode()
     assert '"severity": "high"' in payload
     response.close()
+
+
+class TestAgainstRealServer:
+    """Tests that exercise the actual WSGI server, not Flask's test client.
+
+    The test client accepts responses a real server rejects. A hop-by-hop
+    header such as ``Connection`` passes silently there and raises inside
+    ``wsgiref``, which is exactly how the live SSE stream broke while every
+    test client assertion kept passing.
+    """
+
+    @pytest.fixture()
+    def server(self, tmp_path):
+        import threading
+        import urllib.request
+
+        from ids.api.app import ApiServer
+
+        config = IDSConfig(database_path=str(tmp_path / "live.db"), api_port=0)
+        engine = IDSEngine(config)
+        engine.start(capture=False)
+        TrafficSimulator().feed(engine, "port_scan")
+        engine.wait_idle(timeout=20.0)
+
+        server = ApiServer(create_app(engine), "127.0.0.1", 0)
+        server.start()
+        yield f"http://127.0.0.1:{server.port}", engine, urllib.request, threading
+        server.stop()
+        engine.stop()
+
+    def test_endpoints_serve_over_real_http(self, server) -> None:
+        base, _engine, urllib_request, _threading = server
+        for path in ("/", "/api/health", "/api/alerts", "/api/metrics", "/api/traffic"):
+            with urllib_request.urlopen(base + path, timeout=10) as response:
+                assert response.status == 200, path
+
+    def test_static_assets_are_served(self, server) -> None:
+        base, _engine, urllib_request, _threading = server
+        for path in ("/static/css/style.css", "/static/js/dashboard.js", "/static/favicon.svg"):
+            with urllib_request.urlopen(base + path, timeout=10) as response:
+                assert response.status == 200, path
+
+    def test_event_stream_survives_a_real_wsgi_server(self, server) -> None:
+        """The regression test for the hop-by-hop header that broke the stream."""
+        base, engine, urllib_request, threading = server
+
+        response = urllib_request.urlopen(base + "/api/stream", timeout=10)
+        assert response.status == 200
+        assert response.headers["Content-Type"].startswith("text/event-stream")
+
+        published = threading.Timer(
+            0.3,
+            lambda: engine.bus.publish({"type": "alert", "alert": {"severity": "high"}}),
+        )
+        closer = threading.Timer(1.2, engine.bus.close)
+        published.start()
+        closer.start()
+
+        body = response.read().decode()
+        published.cancel()
+        closer.cancel()
+        response.close()
+
+        assert '"severity": "high"' in body

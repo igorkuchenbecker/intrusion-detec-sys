@@ -3,12 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>IDS — Console de Monitoramento</title>
+<title>IDS // console de monitoramento</title>
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
+<!-- Overlays decorativos: grade, scanlines e vinheta. Puramente visuais e
+     inertes ao ponteiro, para nunca interceptarem cliques da interface. -->
+<div class="fx fx-grid" aria-hidden="true"></div>
+<div class="fx fx-scan" aria-hidden="true"></div>
+<div class="fx fx-vignette" aria-hidden="true"></div>
+
 <header class="topbar">
-  <h1>Intrusion Detection System</h1>
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">▚</span>
+    <h1>Intrusion Detection System<span class="caret" aria-hidden="true"></span></h1>
+    <p class="brand-sub">monitoramento passivo · somente leitura</p>
+  </div>
+
+  <div class="threat" id="threat-panel">
+    <span class="threat-label">nível de ameaça</span>
+    <strong class="threat-value" id="threat-level">—</strong>
+    <div class="threat-bar" aria-hidden="true"><span id="threat-fill"></span></div>
+  </div>
+
   <div class="status">
     <span id="stream-state" class="pill pill-idle">conectando</span>
     <span id="health-state" class="pill pill-idle">—</span>
@@ -16,29 +34,49 @@
 </header>
 
 <main>
-  <section class="cards" aria-label="Resumo de alertas">
-    <div class="card"><span class="n" id="stat-total">0</span><span class="l">Alertas</span></div>
-    <div class="card sev-critical"><span class="n" id="stat-critical">0</span><span class="l">Critical</span></div>
-    <div class="card sev-high"><span class="n" id="stat-high">0</span><span class="l">High</span></div>
-    <div class="card sev-medium"><span class="n" id="stat-medium">0</span><span class="l">Medium</span></div>
-    <div class="card sev-low"><span class="n" id="stat-low">0</span><span class="l">Low</span></div>
-    <div class="card sev-info"><span class="n" id="stat-info">0</span><span class="l">Info</span></div>
+  <section class="grid-severity" aria-label="Alertas por severidade">
+    <article class="tile tile-total">
+      <span class="tile-n" id="stat-total">0</span>
+      <span class="tile-l">alertas</span>
+    </article>
+    <article class="tile sev-critical"><span class="tile-n" id="stat-critical">0</span><span class="tile-l">critical</span></article>
+    <article class="tile sev-high"><span class="tile-n" id="stat-high">0</span><span class="tile-l">high</span></article>
+    <article class="tile sev-medium"><span class="tile-n" id="stat-medium">0</span><span class="tile-l">medium</span></article>
+    <article class="tile sev-low"><span class="tile-n" id="stat-low">0</span><span class="tile-l">low</span></article>
+    <article class="tile sev-info"><span class="tile-n" id="stat-info">0</span><span class="tile-l">info</span></article>
   </section>
 
-  <section class="cards" aria-label="Métricas do pipeline">
-    <div class="card"><span class="n" id="m-captured">0</span><span class="l">Pacotes capturados</span></div>
-    <div class="card"><span class="n" id="m-parsed">0</span><span class="l">Pacotes processados</span></div>
-    <div class="card"><span class="n" id="m-dropped">0</span><span class="l">Pacotes descartados</span></div>
-    <div class="card"><span class="n" id="m-queue">0</span><span class="l">Fila</span></div>
-    <div class="card"><span class="n" id="m-pps">0</span><span class="l">Pacotes/s</span></div>
-    <div class="card"><span class="n" id="m-bps">0</span><span class="l">Bytes/s</span></div>
+  <section class="split">
+    <section class="panel panel-chart">
+      <div class="panel-head">
+        <h2><span class="dot" aria-hidden="true"></span>Pacotes por segundo</h2>
+        <span class="hero" id="chart-latest">—</span>
+      </div>
+      <div class="chart-wrap">
+        <svg id="traffic-chart" class="chart" role="img"
+             aria-label="Pacotes por segundo nas janelas de tráfego recentes"></svg>
+        <p class="chart-empty" id="chart-empty">sem janelas de tráfego ainda</p>
+      </div>
+    </section>
+
+    <section class="panel panel-metrics">
+      <div class="panel-head"><h2><span class="dot" aria-hidden="true"></span>Pipeline</h2></div>
+      <dl class="metrics">
+        <div><dt>capturados</dt><dd id="m-captured">0</dd></div>
+        <div><dt>processados</dt><dd id="m-parsed">0</dd></div>
+        <div><dt>descartados</dt><dd id="m-dropped" class="metric-drop">0</dd></div>
+        <div><dt>fila</dt><dd id="m-queue">0</dd></div>
+        <div><dt>pacotes/s</dt><dd id="m-pps">0</dd></div>
+        <div><dt>bytes/s</dt><dd id="m-bps">0</dd></div>
+      </dl>
+    </section>
   </section>
 
   <section class="panel">
     <div class="panel-head">
-      <h2>Alertas</h2>
+      <h2><span class="dot" aria-hidden="true"></span>Alertas</h2>
       <form id="filters" class="filters">
-        <label>Severidade
+        <label>severidade
           <select id="f-severity">
             <option value="">todas</option>
             <option value="critical">critical</option>
@@ -48,7 +86,7 @@
             <option value="info">info</option>
           </select>
         </label>
-        <label>Detecção
+        <label>detecção
           <select id="f-type">
             <option value="">todas</option>
             <option value="port_scan">port_scan</option>
@@ -57,29 +95,34 @@
             <option value="correlated_activity">correlated_activity</option>
           </select>
         </label>
-        <label>IP de origem
-          <input id="f-source" type="text" placeholder="10.0.0.5" inputmode="numeric">
+        <label>origem
+          <input id="f-source" type="text" placeholder="10.0.0.5" autocomplete="off" spellcheck="false">
         </label>
-        <button type="submit">Filtrar</button>
-        <button type="button" id="f-clear">Limpar</button>
+        <button type="submit">filtrar</button>
+        <button type="button" id="f-clear">limpar</button>
       </form>
     </div>
+
     <p id="filter-error" class="error" hidden></p>
-    <table class="alerts">
-      <thead>
-        <tr>
-          <th>Horário</th><th>Severidade</th><th>Confiança</th><th>Detecção</th>
-          <th>Origem</th><th>Destino</th><th>Descrição</th>
-        </tr>
-      </thead>
-      <tbody id="alerts-body"></tbody>
-    </table>
-    <p id="empty-state" class="empty">Nenhum alerta registrado.</p>
+
+    <div class="table-wrap">
+      <table class="alerts">
+        <thead>
+          <tr>
+            <th>horário</th><th>sev</th><th>conf</th><th>detecção</th>
+            <th>origem</th><th>destino</th><th>descrição</th>
+          </tr>
+        </thead>
+        <tbody id="alerts-body"></tbody>
+      </table>
+    </div>
+    <p id="empty-state" class="empty">nenhum alerta registrado</p>
   </section>
 </main>
 
 <footer>
-  Ferramenta defensiva de monitoramento. Sem autenticação: sirva apenas em localhost.
+  <span class="foot-mark" aria-hidden="true">//</span>
+  ferramenta defensiva de monitoramento · sem autenticação: sirva apenas em localhost
 </footer>
 
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>

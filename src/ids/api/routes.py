@@ -198,7 +198,9 @@ def stream() -> Response:
         mimetype="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
+            # Sem "Connection: keep-alive" aqui: e um header hop-by-hop, que o
+            # WSGI proibe e o servidor rejeita com 500. Quem controla a conexao
+            # e o servidor, nao a aplicacao.
             "X-Accel-Buffering": "no",
         },
     )
