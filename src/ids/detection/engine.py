@@ -42,6 +42,17 @@ class DetectionEngine:
         """The rules this engine runs."""
         return list(self._rules)
 
+    @property
+    def correlation(self) -> CorrelationEngine:
+        """The correlation stage, which runs after the rules on their output.
+
+        Exposed alongside :attr:`rules` because it is a separate stage with
+        its own bounded state, and :meth:`state_sizes` already reports it. A
+        caller that wanted to show every stage holding state could otherwise
+        read the sizes but never reach the stage they belong to.
+        """
+        return self._correlation
+
     def process(self, event: SecurityEvent) -> list[Detection]:
         """Return every detection produced by ``event``."""
         detections: list[Detection] = []

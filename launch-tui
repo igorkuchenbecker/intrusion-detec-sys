@@ -1,0 +1,61 @@
+#!/usr/bin/env sh
+# Launch the operator console from a clean checkout.
+#
+# The console needs the package and Textual installed. Rather than leave that
+# to a README step that goes stale, this script prepares a virtualenv in the
+# repository, installs into it, and hands over to the console.
+#
+# It is deliberately loud about the one thing it changes on disk (the .venv
+# directory) and does nothing else: no system packages, no sudo, no writes
+# outside this repository. In particular it never grants capture privileges
+# for you -- run `ids check` to see what is missing and decide yourself.
+#
+# Usage:
+#   ./launch-tui                        # pipeline only, no privileges needed
+#   ./launch-tui --capture --interface eth0
+#   ./launch-tui --scenario port_scan   # pick what the FEED button runs
+#
+# Defensive monitoring only. Run this against networks and hosts you are
+# authorised to monitor.
+
+set -eu
+
+repo="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+venv="$repo/.venv"
+python="$venv/bin/python"
+
+# A marker keeps repeat launches instant. It records the interpreter that
+# built the environment, so a Python upgrade that leaves the old venv broken
+# triggers a rebuild instead of a confusing import error.
+marker="$venv/.tui-ready"
+
+find_python() {
+    for candidate in python3.13 python3.12 python3; do
+        if command -v "$candidate" >/dev/null 2>&1; then
+            if "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)'; then
+                command -v "$candidate"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+if [ ! -x "$python" ]; then
+    bootstrap="$(find_python)" || {
+        echo "launch-tui: needs Python 3.12 or newer on PATH." >&2
+        exit 1
+    }
+    echo "launch-tui: creating $venv"
+    "$bootstrap" -m venv "$venv"
+fi
+
+stamp="$("$python" -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')"
+if [ ! -f "$marker" ] || [ "$(cat "$marker")" != "$stamp" ]; then
+    echo "launch-tui: installing the IDS and its console into $venv"
+    "$python" -m pip install --quiet --upgrade pip
+    "$python" -m pip install --quiet -e "$repo[tui]"
+    printf '%s' "$stamp" > "$marker"
+fi
+
+exec "$python" -m ids.tui "$@"

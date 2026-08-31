@@ -8,7 +8,7 @@ alertas com evidência num dashboard ao vivo, numa API REST e em SQLite.
 faz varredura ativa, não bloqueia host, não derruba conexão e não executa nada no
 alvo monitorado.
 
-Python 3.12 · Scapy · Flask · SQLite · Server-Sent Events
+Python 3.12 · Scapy · Flask · SQLite · Server-Sent Events · Textual
 
 ## Finalidade
 
@@ -156,10 +156,75 @@ dependência nenhuma. Um WebSocket acrescentaria biblioteca e protocolo para gan
 canal de volta que este dashboard não usa. O dashboard cai para polling se o stream
 falhar.
 
+## Console no terminal
+
+O dashboard web serve bem quem tem navegador. Quem está **na máquina** — via SSH,
+sem browser e sem porta para expor — quer a mesma coisa no terminal. O bind padrão
+é `127.0.0.1` justamente porque alcançá-lo de outra máquina exige um proxy com
+autenticação e TLS; um console não exige nada disso.
+
+Um arquivo executável prepara o ambiente e abre o console:
+
+```sh
+./launch-tui                              # só o pipeline, sem privilégio nenhum
+./launch-tui --capture --interface eth0   # captura de verdade
+./launch-tui --scenario port_scan         # escolhe o que o botão FEED dispara
+```
+
+Ele cria `.venv` no repositório, instala o pacote com o extra `tui` e entrega o
+controle. Não usa `sudo`, não instala pacote de sistema e **nunca concede
+capabilities por você** — `ids check` continua sendo quem diz o que falta. Quem já
+tem o ambiente pronto chama direto:
+
+```sh
+.venv/bin/pip install -e ".[tui]"
+.venv/bin/ids-console --scenario all
+```
+
+| Aba | Mostra |
+|---|---|
+| Alert | Evidência, remediação, MITRE e ocorrências do alerta selecionado |
+| Pipeline | Fila contra capacidade, pacotes descartados, contadores e health |
+| Rules | Cada estágio com estado, o que reporta e quantas chaves está rastreando |
+| Traffic | Sparkline de pacotes/s e as janelas fechadas recentes |
+| Log | O stream de log do motor, ao vivo |
+
+| Tecla | Ação |
+|---|---|
+| `ctrl+f` | Roda o cenário selecionado pelo pipeline real |
+| `ctrl+l` | Limpa a tabela (não apaga nada do banco) |
+| `ctrl+q` | Sai, parando o motor |
+
+### Um segundo consumidor, não uma segunda opinião
+
+O console assina o **mesmo `EventBus`** que o dashboard assina, lê os **mesmos**
+contadores e os **mesmos** repositórios. Nenhum dos dois recalcula veredito: se
+discordarem, é bug de renderização, não duas opiniões.
+
+Isso é seguro porque o bus entrega em caixas postais limitadas por assinante. Um
+console que fica para trás descarta as próprias mensagens e conta quantas — ele não
+consegue atrasar o dashboard nem crescer fila até o processo morrer. Quando isso
+acontece, a aba Pipeline diz exatamente isso, e que os alertas continuam no banco.
+
+O nível de ameaça é derivado igual ao do dashboard: **a maior severidade presente**,
+como nível e não como score. Um número composto a partir de quatro regras heurísticas
+sugeriria uma precisão que nenhuma delas tem.
+
+### O que o console se recusa a insinuar
+
+- **`packets_dropped` fica ao lado da fila, não escondido num contador.** Pacote
+  descartado é pacote que ninguém analisou; enquanto esse número sobe, lista de
+  alertas vazia não é evidência de rede quieta — e o painel diz isso por escrito
+- **NOMINAL não é "está tudo bem".** Significa que nada disparou, o que não é uma
+  afirmação sobre o que aconteceu
+- **Todo alerta termina dizendo que é indicador, não ataque confirmado**
+- **Limpar a tabela não apaga nada.** O texto que fica no lugar diz onde os alertas
+  continuam
+
 ## Testes
 
 ```sh
-.venv/bin/pytest                    # 147 testes: unitários, integração e API
+.venv/bin/pytest                    # 234 testes: unitários, integração e API
 .venv/bin/pytest --cov=ids          # com cobertura
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
 ```
@@ -171,7 +236,18 @@ quanto os positivos: tráfego benigno não pode gerar alerta, cinquenta conexõe
 porta não são varredura, e uma varredura distribuída entre origens é falso negativo
 declarado.
 
-A CI roda a suíte em Python 3.12 e 3.13 mais `ruff` a cada push e pull request.
+O console é exercitado pelo piloto headless do Textual contra um motor de verdade —
+o cenário passa pela fila, pelo parser, pelas regras, pela correlação, pelo SQLite e
+pelo bus, não por um dublê deles. Há também um teste que confere a **geometria** de
+cada controle em quatro larguras de terminal, de 80 colunas para cima: um widget
+posicionado além da borda continua no DOM, uma query o encontra, e um teste que só
+consulta passa enquanto o operador não enxerga o botão.
+
+A CI roda a suíte em Python 3.12 e 3.13 mais `ruff` a cada push e pull request, e um
+job separado constrói o wheel, instala num ambiente limpo e roda a suíte com a árvore
+de fontes fora do `sys.path` — este projeto empacota três arquivos que não são código
+(o template do dashboard, o CSS/JS e a folha de estilo do console), e nenhum teste
+comum notaria a falta deles.
 
 ## Limitações
 

@@ -41,6 +41,42 @@ jobs:
       - name: Run test suite
         run: pytest --cov=ids --cov-report=term-missing
 
+  package:
+    name: Wheel install
+    runs-on: ubuntu-latest
+    # This project ships several files that are package data, not code: the
+    # dashboard template, its CSS and JS, and the console stylesheet. All of
+    # them load fine from a working tree and would be missing from a wheel if
+    # the packaging config ever stopped listing them -- and every test would
+    # still pass. This job is the check that catches it: build, install into a
+    # clean environment, and run the suite with the source tree off sys.path.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Build a wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel
+
+      - name: Install the wheel into a clean environment
+        run: |
+          python -m venv /tmp/wheelenv
+          /tmp/wheelenv/bin/pip install --upgrade pip
+          /tmp/wheelenv/bin/pip install "$(echo dist/*.whl)[tui]" pytest
+
+      - name: Run the suite against the installed package
+        # -o pythonpath= drops the repo's src/ from sys.path, so `ids` can only
+        # resolve from site-packages. Without it the wheel is built, installed
+        # and then never actually imported.
+        run: /tmp/wheelenv/bin/python -m pytest -o pythonpath= -q
+
   lint:
     name: Lint & format (ruff)
     runs-on: ubuntu-latest

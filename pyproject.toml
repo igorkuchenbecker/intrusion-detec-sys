@@ -27,10 +27,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "pytest-cov>=5", "ruff>=0.6,<0.7"]
+tui = ["textual>=1.0,<9"]
+dev = ["pytest>=8,<10", "pytest-cov>=5", "ruff>=0.6,<0.7", "textual>=1.0,<9"]
 
 [project.scripts]
 ids = "ids.cli.commands:main"
+ids-console = "ids.tui:main"
 
 [project.urls]
 Repository = "https://github.com/igorkuchenbecker/intrusion-detec-sys"
@@ -42,7 +44,15 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-"ids.dashboard" = ["templates/*.html", "static/css/*.css", "static/js/*.js"]
+# Every non-Python file under dashboard/, listed by directory rather than by
+# extension. The previous globs named css and js and silently omitted
+# static/favicon.svg, so an installed wheel served the dashboard with a 404 for
+# its own icon -- invisible to every test, because they all ran against the
+# working tree where the file is on disk. The wheel-install CI job now covers
+# this; the globs cover the whole directory so the next asset added does not
+# need anyone to remember.
+"ids.dashboard" = ["templates/*", "static/*", "static/css/*", "static/js/*"]
+"ids.tui" = ["*.tcss"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

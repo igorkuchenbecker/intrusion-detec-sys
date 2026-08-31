@@ -1,0 +1,198 @@
+/* Layout and chrome for the operator console.
+ *
+ * The palette variables ($bg, $accent, $sev-critical...) are not declared
+ * here: they are generated from ids.tui.theme and prepended to this sheet at
+ * load time, so the console and the web dashboard cannot drift apart. Add
+ * colours to theme.py, not to this file.
+ */
+
+Screen {
+    background: $bg;
+    color: $ink;
+}
+
+#banner {
+    height: 1;
+    padding: 0 1;
+    background: $bg;
+}
+
+/* ---------------------------------------------------------------- controls */
+
+#controls {
+    height: auto;
+    border-bottom: solid $line;
+    padding: 0 1;
+}
+
+.control-row {
+    height: auto;
+    align-vertical: middle;
+}
+
+.field-label {
+    color: $muted;
+    padding: 1 1 0 1;
+    width: 10;
+}
+
+/* A fixed width, not the stock 100%. A Select defaults to the full width of
+ * its container, which inside a row means it takes everything and lays its
+ * siblings out past the right edge -- the buttons are then in the DOM,
+ * findable by a test, and invisible to the operator. A scenario picker holds
+ * one short word, so it is sized for one rather than given the leftovers. */
+Select {
+    width: 24;
+    background: $panel;
+    color: $ink;
+    height: 3;
+}
+
+Select > SelectCurrent {
+    border: tall $line;
+    background: $panel;
+}
+
+Select:focus > SelectCurrent {
+    border: tall $accent;
+}
+
+Button {
+    height: 3;
+    min-width: 12;
+    border: tall $line;
+    background: $panel;
+    color: $ink;
+}
+
+Button:focus {
+    border: tall $accent;
+}
+
+Button.-success {
+    color: $accent;
+}
+
+Button:disabled {
+    color: $muted;
+}
+
+/* ------------------------------------------------------------ threat strip */
+
+#threat {
+    height: auto;
+    padding: 1 2 0 2;
+    background: $bg;
+}
+
+/* ----------------------------------------------------------------- alerts */
+
+#alerts {
+    height: 35%;
+    background: $bg;
+    color: $ink;
+}
+
+DataTable > .datatable--header {
+    background: $bg;
+    color: $muted;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: $line-hot;
+    color: $ink;
+}
+
+DataTable > .datatable--hover {
+    background: $line;
+}
+
+/* ------------------------------------------------------------------- tabs */
+
+#tabs {
+    height: 1fr;
+}
+
+TabbedContent Tabs {
+    background: $bg;
+    color: $muted;
+}
+
+TabbedContent Tabs Tab {
+    color: $muted;
+}
+
+TabbedContent Tabs Tab.-active {
+    color: $accent;
+    text-style: bold;
+}
+
+TabPane {
+    padding: 0;
+    background: $bg;
+}
+
+.pane {
+    padding: 1 2;
+    height: 1fr;
+    background: $bg;
+    overflow-x: auto;
+}
+
+.section {
+    color: $muted;
+    text-style: bold;
+    padding: 1 0 0 0;
+}
+
+#queue {
+    padding: 0 0 1 0;
+}
+
+#pps {
+    height: 4;
+    margin: 1 0;
+    background: $bg;
+}
+
+#pps > .sparkline--max-color {
+    color: $accent;
+}
+
+#pps > .sparkline--min-color {
+    color: $accent-dim;
+}
+
+#log {
+    background: $bg;
+    padding: 1 2;
+    height: 1fr;
+}
+
+/* ----------------------------------------------------------------- status */
+
+/* Not docked. The Footer docks bottom and takes the last row out of the flow;
+ * a second widget docked to the same edge lands on the same row and whichever
+ * comes later in the DOM paints over the other. */
+#status {
+    height: 1;
+    background: $panel;
+}
+
+Footer {
+    background: $panel;
+    color: $muted;
+}
+
+Footer > .footer--key {
+    background: $panel;
+    color: $accent;
+    text-style: bold;
+}
+
+Toast {
+    background: $panel;
+    border: tall $line;
+    color: $ink;
+}
